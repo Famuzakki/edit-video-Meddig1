@@ -28,6 +28,8 @@ SEGS = [
 ]
 OUTRO = ("OUT", "IMG_9431", 28.90, 31.90)
 XF_AB, XF_OUT = 0.4, 0.5
+LOGO = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "logo_pill.png")
+LOGO_SCALE, LOGO_Y = 0.62, 168
 
 dur = {s[0]: s[3] - s[2] for s in SEGS}
 A_LEN = dur["A1"] + dur["A2"]
@@ -208,9 +210,7 @@ def graphics():
     text(T("A", 6.60), A_LEN, 540, 402, r"KEPOIN YUK! {\fnDejaVu Sans\b1}↓", 64, WHITE, "Montserrat Black")
 
     # ---- persistent tag during B ----
-    box(B0 + 0.2, OUT0 + 0.2, 540, 175, 520, 64, NAVY, "30", r=32, pop=False, fade=(300, 300))
-    text(B0 + 0.2, OUT0 + 0.2, 540, 177, "SV UNS  •  D4 PMD", 32, WHITE, "Montserrat ExtraBold",
-         pop=False, fade=(300, 300))
+    # (logo pill PMD | SV | UNS is overlaid as an image in main(), see LOGO)
 
     # ---- info cards ----
     card(T("B", 2.60), T("B", 9.35), 320, "GELAR LULUSAN", "SARJANA TERAPAN")
@@ -306,7 +306,7 @@ def main():
     fc.append(f"[av][bv]xfade=transition=smoothleft:duration={XF_AB}:offset={A_LEN - XF_AB:.3f},settb=1/30[abv]")
     fc.append(f"[aa][ba]acrossfade=d={XF_AB}:c1=tri:c2=tri[aba]")
     fc.append(f"[abv][ov]xfade=transition=fade:duration={XF_OUT}:offset={OUT0:.3f},"
-              f"subtitles={ass}:fontsdir=/usr/share/fonts,format=yuv420p[vout]")
+              f"subtitles={ass}:fontsdir=/usr/share/fonts[xv]")
     fc.append(f"[aba][{n}:a]acrossfade=d={XF_OUT}:c1=tri:c2=tri,"
               "highpass=f=80,afftdn=nf=-28,equalizer=f=250:t=q:w=1:g=-2,equalizer=f=3200:t=q:w=1.2:g=3,"
               "acompressor=threshold=-26dB:ratio=3:attack=5:release=90:makeup=4,"
@@ -322,6 +322,14 @@ def main():
         fc.append(f"[{k}:a]adelay={int(max(t, 0) * 1000)}:all=1[w{i}]"); mix.append(f"[w{i}]"); k += 1
     sfx_in += ["-i", chime]
     fc.append(f"[{k}:a]adelay={int((OUT0 + 0.6) * 1000)}:all=1[ch]"); mix.append("[ch]")
+    # logo pill (PMD | SV | UNS) on top during the explanation + outro
+    lg_in = ["-loop", "1", "-t", f"{TOTAL:.3f}", "-i", LOGO]
+    l0 = B0 + 0.2
+    fc.append(f"[{k + 1}:v]scale=iw*{LOGO_SCALE}:-1,format=rgba,"
+              f"fade=t=in:st={l0:.2f}:d=0.35:alpha=1,setpts=PTS-STARTPTS[lg]")
+    fc.append(f"[xv][lg]overlay=x=(W-w)/2:y={LOGO_Y}-h/2:enable='gte(t,{l0:.2f})':shortest=1,"
+              "format=yuv420p[vout]")
+    sfx_in += lg_in
     fc.append("[voice]" + "".join(mix) + f"amix=inputs={len(mix) + 1}:normalize=0:duration=first,"
               "alimiter=limit=0.95[aout]")
 
