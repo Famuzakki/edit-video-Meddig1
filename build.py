@@ -30,6 +30,7 @@ OUTRO = ("OUT", "IMG_9431", 28.90, 31.90)
 XF_AB, XF_OUT = 0.4, 0.5
 LOGO = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "logo_pill.png")
 LOGO_SCALE, LOGO_Y = 0.62, 168
+MUSIC_LUFS = -26  # backsound level before ducking (voice is -14 LUFS)
 
 dur = {s[0]: s[3] - s[2] for s in SEGS}
 A_LEN = dur["A1"] + dur["A2"]
@@ -229,7 +230,7 @@ def graphics():
     # ---- CTA ----
     t_c = T("B", 25.20)
     box(t_c, OUT0 + 0.3, 540, 330, 860, 130, CYAN, "00", r=30)
-    text(t_c, OUT0 + 0.3, 540, 332, "DAFTAR PMB SEKARANG!", 60, NAVY)
+    text(t_c, OUT0 + 0.3, 540, 332, "AYO DAFTAR PMD!", 64, NAVY)
     text(T("B", 27.18), OUT0 + 0.3, 540, 470, "Jangan sampai ketinggalan", 40, WHITE, "Montserrat ExtraBold", bord=6)
 
     # ---- OUTRO card ----
@@ -239,7 +240,7 @@ def graphics():
     text(o + 0.1, TOTAL, 540, 895, "MEDIA DIGITAL", 96, WHITE)
     text(o + 0.3, TOTAL, 540, 1000, "Sekolah Vokasi UNS", 46, WHITE, "Montserrat SemiBold")
     box(o + 0.6, TOTAL, 540, 1160, 760, 120, CYAN, "00", r=60)
-    text(o + 0.6, TOTAL, 540, 1162, "DAFTAR PMB SEKARANG", 54, NAVY)
+    text(o + 0.6, TOTAL, 540, 1162, "AYO DAFTAR PMD", 58, NAVY)
     text(o + 0.9, TOTAL, 540, 1320, "Follow  •  Like  •  Share", 40, WHITE, "Montserrat ExtraBold")
 
 
@@ -330,7 +331,15 @@ def main():
     fc.append(f"[xv][lg]overlay=x=(W-w)/2:y={LOGO_Y}-h/2:enable='gte(t,{l0:.2f})':shortest=1,"
               "format=yuv420p[vout]")
     sfx_in += lg_in
-    fc.append("[voice]" + "".join(mix) + f"amix=inputs={len(mix) + 1}:normalize=0:duration=first,"
+    # educational background music, ducked under the voice
+    music = f"{WORK}/music.wav"
+    run([sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "gen_music.py"),
+         music, f"{TOTAL:.3f}"])
+    sfx_in += ["-i", music]
+    fc.append("[voice]asplit=2[vm][vk]")
+    fc.append(f"[{k + 2}:a]loudnorm=I={MUSIC_LUFS}:TP=-6:LRA=11[mus]")
+    fc.append("[mus][vk]sidechaincompress=threshold=0.04:ratio=4:attack=40:release=450:makeup=1[bg]")
+    fc.append("[vm]" + "".join(mix) + f"[bg]amix=inputs={len(mix) + 2}:normalize=0:duration=first,"
               "alimiter=limit=0.95[aout]")
 
     run(["ffmpeg", "-y", "-v", "error", *inputs, *sfx_in, "-filter_complex", ";".join(fc),
